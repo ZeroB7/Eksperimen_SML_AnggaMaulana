@@ -1,0 +1,19 @@
+# Dataset mentah (jangan di-commit, ukurannya besar)
+mall_customers_raw/
+
+# Tapi hasil preprocessing tetap di-commit
+!preprocessing/mall_customers_preprocessing/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# Kaggle credentials (JANGAN pernah di-commit!)
+kaggle.json
+.kaggle/
+
+# OS
+.DS_Store
+Thumbs.db
