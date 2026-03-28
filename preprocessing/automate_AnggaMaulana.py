@@ -2,6 +2,8 @@
 automate_AnggaMaulana.py
 ========================
 Script otomatisasi preprocessing untuk dataset Mall Customer Segmentation.
+Tahapan sama dengan notebook eksperimen.
+
 Kriteria 1 - Skilled | Kelas Membangun Sistem Machine Learning
 
 Penggunaan:
@@ -19,6 +21,7 @@ OUTPUT_DIR  = "./mall_customers_preprocessing"
 FEATURES    = ["Age", "Annual Income (k$)", "Spending Score (1-100)"]
 
 
+# ── 1. Load Data ──────────────────────────────────────────────────────
 def load_data(input_path: str) -> pd.DataFrame:
     """Memuat dataset dari path yang diberikan."""
     if not os.path.exists(input_path):
@@ -28,6 +31,7 @@ def load_data(input_path: str) -> pd.DataFrame:
     return df
 
 
+# ── 2. Seleksi Fitur ──────────────────────────────────────────────────
 def select_features(df: pd.DataFrame, features: list) -> pd.DataFrame:
     """Memilih kolom fitur yang relevan untuk clustering."""
     missing_cols = [c for c in features if c not in df.columns]
@@ -38,6 +42,7 @@ def select_features(df: pd.DataFrame, features: list) -> pd.DataFrame:
     return df_selected
 
 
+# ── 3. Handle Missing Values ──────────────────────────────────────────
 def handle_missing_values(df: pd.DataFrame) -> pd.DataFrame:
     """Menghapus baris yang mengandung missing values."""
     before = len(df)
@@ -51,6 +56,44 @@ def handle_missing_values(df: pd.DataFrame) -> pd.DataFrame:
     return df_clean
 
 
+# ── 4. Handle Duplikasi ───────────────────────────────────────────────
+def handle_duplicates(df: pd.DataFrame) -> pd.DataFrame:
+    """Menghapus baris yang duplikat."""
+    before = len(df)
+    df_clean = df.drop_duplicates()
+    after = len(df_clean)
+    removed = before - after
+    if removed > 0:
+        print(f"[handle_duplicates] {removed} baris duplikat dihapus")
+    else:
+        print(f"[handle_duplicates] Tidak ada duplikasi -- {after} baris dipertahankan")
+    return df_clean
+
+
+# ── 5. Handle Outlier ─────────────────────────────────────────────────
+def remove_outliers_iqr(df: pd.DataFrame, columns: list) -> pd.DataFrame:
+    """Menghapus outlier menggunakan metode IQR."""
+    df_clean = df.copy()
+    for col in columns:
+        Q1 = df_clean[col].quantile(0.25)
+        Q3 = df_clean[col].quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+
+        outliers = df_clean[(df_clean[col] < lower_bound) | (df_clean[col] > upper_bound)]
+        print(f"[remove_outliers]  Kolom '{col}': {len(outliers)} outlier ditemukan")
+
+        df_clean = df_clean[
+            (df_clean[col] >= lower_bound) &
+            (df_clean[col] <= upper_bound)
+        ]
+
+    print(f"[remove_outliers]  Shape setelah hapus outlier: {df_clean.shape}")
+    return df_clean
+
+
+# ── 6. Feature Scaling ────────────────────────────────────────────────
 def scale_features(df: pd.DataFrame) -> tuple:
     """Melakukan standardisasi fitur menggunakan StandardScaler."""
     scaler = StandardScaler()
@@ -60,6 +103,7 @@ def scale_features(df: pd.DataFrame) -> tuple:
     return df_scaled, scaler
 
 
+# ── 7. Simpan Hasil ───────────────────────────────────────────────────
 def save_preprocessed(df: pd.DataFrame, output_dir: str) -> str:
     """Menyimpan data hasil preprocessing ke folder output."""
     os.makedirs(output_dir, exist_ok=True)
@@ -69,6 +113,7 @@ def save_preprocessed(df: pd.DataFrame, output_dir: str) -> str:
     return output_path
 
 
+# ── Pipeline Utama ────────────────────────────────────────────────────
 def run_preprocessing(input_path=INPUT_PATH, output_dir=OUTPUT_DIR, features=None):
     """Menjalankan seluruh pipeline preprocessing secara berurutan."""
     if features is None:
@@ -81,6 +126,8 @@ def run_preprocessing(input_path=INPUT_PATH, output_dir=OUTPUT_DIR, features=Non
     df = load_data(input_path)
     df = select_features(df, features)
     df = handle_missing_values(df)
+    df = handle_duplicates(df)
+    df = remove_outliers_iqr(df, features)
     df_scaled, scaler = scale_features(df)
     save_preprocessed(df_scaled, output_dir)
 
@@ -91,6 +138,7 @@ def run_preprocessing(input_path=INPUT_PATH, output_dir=OUTPUT_DIR, features=Non
     return df_scaled
 
 
+# ── Entry Point ───────────────────────────────────────────────────────
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Automate preprocessing -- Mall Customer Segmentation"
